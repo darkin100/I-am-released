@@ -113,13 +113,16 @@ npm run dev
    - Import your GitHub repository
 
 3. **Configure environment variables in Vercel**
-   - Add the same variables from your `.env` file:
-     - `VITE_SUPABASE_URL`
-     - `VITE_SUPABASE_ANON_KEY`
+   - Add the following environment variables:
+     - `VITE_SUPABASE_URL`: Your Supabase project URL
+     - `VITE_SUPABASE_ANON_KEY`: Your Supabase anon key
+     - `VITE_SITE_URL`: Your Vercel app URL (e.g., `https://your-app.vercel.app`)
 
 4. **Update Supabase redirect URLs**
-   - Add your Vercel domain to Supabase redirect URLs:
+   - Go to Supabase Dashboard → Authentication → URL Configuration
+   - Add your Vercel domain to "Redirect URLs":
      - `https://your-app.vercel.app/auth/callback`
+   - Save the changes
 
 5. **Deploy!**
 

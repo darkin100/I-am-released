@@ -41,7 +41,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const signInWithGitHub = async () => {
-    const redirectUrl = `${window.location.origin}/auth/callback`
+    // Use VITE_SITE_URL if set, otherwise fallback to window.location.origin
+    const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin
+    const redirectUrl = `${siteUrl}/auth/callback`
     console.log('Redirect URL:', redirectUrl)
     
     const { data, error } = await supabase.auth.signInWithOAuth({
