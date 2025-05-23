@@ -7,13 +7,15 @@ import { fetchCommitsBetweenRefs, parseRepoUrl } from '@/lib/githubApi';
 import { categorizeCommits, generateMarkdown } from '@/lib/releaseNotesGenerator';
 import { Commit } from '@/types';
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const [releaseNotes, setReleaseNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [fileName, setFileName] = useState('release-notes.md');
+  const { getGitHubToken } = useAuth();
 
-  const handleGenerateNotes = async (repoUrl: string, startRef: string, endRef: string, pat: string) => {
+  const handleGenerateNotes = async (repoUrl: string, startRef: string, endRef: string) => {
     setLoading(true);
     setReleaseNotes('');
 
@@ -24,8 +26,15 @@ const Index = () => {
       return;
     }
 
+    const token = getGitHubToken();
+    if (!token) {
+      toast({ title: "Authentication Required", description: "Please sign in to continue.", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+
     try {
-      const commits: Commit[] = await fetchCommitsBetweenRefs(repoInfo.owner, repoInfo.repo, startRef, endRef, pat);
+      const commits: Commit[] = await fetchCommitsBetweenRefs(repoInfo.owner, repoInfo.repo, startRef, endRef, token);
       
       if (commits.length === 0) {
         toast({ title: "No commits found", description: `No new commits found between ${startRef} and ${endRef}.`, variant: "default" });

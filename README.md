@@ -1,73 +1,188 @@
-# Welcome to your Lovable project
+# I am Released - GitHub Release Notes Generator
 
-## Project info
+A secure web application that generates beautiful release notes from your GitHub repository's commit history. Supports both public and private repositories through GitHub OAuth authentication.
 
-**URL**: https://lovable.dev/projects/43d9a5b5-45a9-478a-8644-f473a3a0fa5a
+## Features
 
-## How can I edit this code?
+- 🔐 Secure GitHub OAuth authentication via Supabase
+- 📝 Automatic commit categorization (features, fixes, breaking changes)
+- 🏷️ Support for both tags and branch comparisons
+- 🔒 Access to both public and private repositories
+- 📋 Copy to clipboard or download as Markdown
+- 🎨 Clean, modern UI with dark mode support
 
-There are several ways of editing your application.
+## Prerequisites
 
-**Use Lovable**
+Before setting up this project, you'll need:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/43d9a5b5-45a9-478a-8644-f473a3a0fa5a) and start prompting.
+1. **Node.js & npm** - [Install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+2. **A Supabase account** - [Sign up for free](https://supabase.com)
+3. **A GitHub account** - For creating OAuth App
 
-Changes made via Lovable will be committed automatically to this repo.
+## Setup Instructions
 
-**Use your preferred IDE**
+### 1. Clone and Install
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+```bash
+# Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Navigate to the project directory
+cd I-am-released
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+# Copy environment variables template
+cp .env.example .env
 ```
 
-**Edit a file directly in GitHub**
+### 2. Set up Supabase
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. **Create a new Supabase project**
+   - Go to [app.supabase.com](https://app.supabase.com)
+   - Click "New project"
+   - Fill in the project details
 
-**Use GitHub Codespaces**
+2. **Get your Supabase credentials**
+   - Go to Project Settings → API
+   - Copy:
+     - `Project URL` → `VITE_SUPABASE_URL` in `.env`
+     - `anon public` key → `VITE_SUPABASE_ANON_KEY` in `.env`
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+3. **Configure Authentication URLs**
+   - Go to Authentication → URL Configuration
+   - Add to "Redirect URLs":
+     ```
+     http://localhost:8080/auth/callback
+     http://localhost:5173/auth/callback
+     https://your-domain.com/auth/callback
+     ```
+   - Save changes
 
-## What technologies are used for this project?
+### 3. Set up GitHub OAuth
 
-This project is built with:
+1. **Create a GitHub OAuth App**
+   - Go to GitHub → Settings → Developer settings → OAuth Apps
+   - Click "New OAuth App"
+   - Fill in:
+     - **Application name**: "I am Released" (or your choice)
+     - **Homepage URL**: `http://localhost:8080` (or your domain)
+     - **Authorization callback URL**: `https://[your-supabase-project-ref].supabase.co/auth/v1/callback`
+       - Find your project ref in Supabase project settings
+   - Click "Register application"
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+2. **Copy OAuth credentials**
+   - Copy the **Client ID**
+   - Generate a new **Client Secret** and copy it
 
-## How can I deploy this project?
+3. **Configure Supabase with GitHub OAuth**
+   - In Supabase, go to Authentication → Providers
+   - Find GitHub and click to configure
+   - Enable GitHub provider
+   - Paste your Client ID and Client Secret
+   - Leave "Authorized domains" empty (Supabase will handle it)
+   - Save
 
-Simply open [Lovable](https://lovable.dev/projects/43d9a5b5-45a9-478a-8644-f473a3a0fa5a) and click on Share -> Publish.
+### 4. Configure Environment Variables
 
-## Can I connect a custom domain to my Lovable project?
+Edit your `.env` file:
 
-Yes, you can!
+```env
+VITE_SUPABASE_URL=https://[your-project-ref].supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### 5. Run the Application
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+```bash
+# Start the development server
+npm run dev
+
+# The app will be available at http://localhost:8080
+```
+
+## Deployment
+
+### Deploy to Vercel
+
+1. **Push your code to GitHub**
+
+2. **Import project in Vercel**
+   - Go to [vercel.com](https://vercel.com)
+   - Import your GitHub repository
+
+3. **Configure environment variables in Vercel**
+   - Add the same variables from your `.env` file:
+     - `VITE_SUPABASE_URL`
+     - `VITE_SUPABASE_ANON_KEY`
+
+4. **Update Supabase redirect URLs**
+   - Add your Vercel domain to Supabase redirect URLs:
+     - `https://your-app.vercel.app/auth/callback`
+
+5. **Deploy!**
+
+## Usage
+
+1. Visit the application
+2. Click "Sign in with GitHub"
+3. Authorize the application to access your repositories
+4. Click "Select a repository" to browse your repositories
+5. Search and select from your public and private repositories
+6. Click "Load Tags" to fetch available tags
+7. Select start and end references (tags or commits)
+8. Click "Generate Release Notes"
+9. Copy or download your release notes!
+
+## Troubleshooting
+
+### "Authentication error: Error getting user profile from external provider"
+- Ensure your GitHub OAuth App callback URL exactly matches: `https://[your-supabase-project-ref].supabase.co/auth/v1/callback`
+- Verify Client ID and Secret are correctly copied to Supabase
+
+### "invalid request: both auth code and code verifier should be non-empty"
+- Clear browser cache and cookies
+- Ensure you're using an OAuth App, not a GitHub App
+
+### User stays on login page after authentication
+- Check that your redirect URLs in Supabase include your exact domain with port
+- Verify environment variables are loaded correctly
+
+## Development
+
+### Tech Stack
+- **Frontend**: React, TypeScript, Vite
+- **UI**: Shadcn/ui, Tailwind CSS
+- **Authentication**: Supabase Auth with GitHub OAuth
+- **API**: GitHub REST API via Octokit
+
+### Project Structure
+```
+src/
+├── components/       # React components
+├── contexts/        # Auth context
+├── lib/            # Utilities and API clients
+├── pages/          # Page components
+└── types/          # TypeScript types
+```
+
+### Available Scripts
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run lint         # Run ESLint
+npm run preview      # Preview production build
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is open source and available under the MIT License.

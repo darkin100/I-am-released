@@ -4,16 +4,11 @@ import { Commit, Tag } from "@/types";
 
 const GITHUB_API_URL = "https://api.github.com";
 
-// Initialize Octokit. A PAT can be provided by the user for higher rate limits / private repos.
-// For now, it will make unauthenticated requests or use a PAT if provided.
-let octokitInstance: Octokit | null = null;
-
-const getOctokit = (pat?: string) => {
-  if (pat) {
-    return new Octokit({ auth: pat });
+const getOctokit = (token?: string) => {
+  if (token) {
+    return new Octokit({ auth: token });
   }
-  // Return a new instance for unauthenticated requests if no PAT is provided
-  // This helps avoid issues if a PAT was previously set and then removed.
+  // This shouldn't happen in authenticated flow, but provide fallback
   return new Octokit();
 };
 
@@ -86,5 +81,45 @@ export const fetchCommitsBetweenRefs = async (
       errorMessage = `Failed to fetch commits: ${error.message}`;
     }
     throw new Error(errorMessage);
+  }
+};
+
+export interface Repository {
+  id: number;
+  name: string;
+  full_name: string;
+  private: boolean;
+  html_url: string;
+  description: string | null;
+  owner: {
+    login: string;
+    avatar_url: string;
+  };
+  updated_at: string;
+  language: string | null;
+  stargazers_count: number;
+}
+
+export const fetchUserRepositories = async (token: string, page = 1, per_page = 30): Promise<{
+  repositories: Repository[];
+  hasMore: boolean;
+}> => {
+  const octokit = getOctokit(token);
+  try {
+    const response = await octokit.repos.listForAuthenticatedUser({
+      sort: 'updated',
+      direction: 'desc',
+      per_page,
+      page,
+      type: 'all'
+    });
+
+    return {
+      repositories: response.data,
+      hasMore: response.data.length === per_page
+    };
+  } catch (error) {
+    console.error("Error fetching repositories:", error);
+    throw new Error("Failed to fetch repositories. Please try again.");
   }
 };

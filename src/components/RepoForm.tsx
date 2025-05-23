@@ -4,64 +4,55 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { fetchTags, parseRepoUrl } from "@/lib/githubApi";
+import { fetchTags, Repository } from "@/lib/githubApi";
 import { Tag } from "@/types";
 import { toast } from "@/hooks/use-toast";
-import { Github, Tags, Wand2 } from 'lucide-react';
+import { Tags, Wand2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { RepositoryPicker } from './RepositoryPicker';
 
 interface RepoFormProps {
-  onSubmit: (repoUrl: string, startRef: string, endRef: string, pat: string) => void;
+  onSubmit: (repoUrl: string, startRef: string, endRef: string) => void;
   loading: boolean;
 }
 
 const RepoForm: React.FC<RepoFormProps> = ({ onSubmit, loading }) => {
-  const [repoUrl, setRepoUrl] = useState('');
-  const [pat, setPat] = useState('');
+  const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
   const [startRef, setStartRef] = useState('');
   const [endRef, setEndRef] = useState('');
-  const [repoInfo, setRepoInfo] = useState<{owner: string, repo: string} | null>(null);
   const [fetchingTags, setFetchingTags] = useState(false);
+  const { getGitHubToken } = useAuth();
 
+  // Clear tags when repository changes
   useEffect(() => {
-    const GITHUB_PAT_KEY = 'github_pat_released_app';
-    const storedPat = localStorage.getItem(GITHUB_PAT_KEY);
-    if (storedPat) {
-      setPat(storedPat);
-    }
-  }, []);
-
-  const handleRepoUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const url = e.target.value;
-    setRepoUrl(url);
-    const parsed = parseRepoUrl(url);
-    setRepoInfo(parsed);
-    if (!parsed) {
-      setTags([]); // Clear tags if URL is invalid or not GitHub
+    if (selectedRepo) {
+      setTags([]);
       setStartRef('');
       setEndRef('');
     }
+  }, [selectedRepo]);
+
+  const handleRepoSelect = (repo: Repository) => {
+    setSelectedRepo(repo);
   };
   
-  const handlePatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newPat = e.target.value;
-    setPat(newPat);
-    const GITHUB_PAT_KEY = 'github_pat_released_app';
-    if (newPat) {
-      localStorage.setItem(GITHUB_PAT_KEY, newPat);
-    } else {
-      localStorage.removeItem(GITHUB_PAT_KEY);
-    }
-  };
 
   const loadTags = async () => {
-    if (!repoInfo) {
-      toast({ title: "Invalid Repository URL", description: "Please enter a valid GitHub repository URL.", variant: "destructive" });
+    if (!selectedRepo) {
+      toast({ title: "No Repository Selected", description: "Please select a repository first.", variant: "destructive" });
       return;
     }
+    
+    const token = getGitHubToken();
+    if (!token) {
+      toast({ title: "Authentication Required", description: "Please sign in to continue.", variant: "destructive" });
+      return;
+    }
+    
     setFetchingTags(true);
     try {
-      const fetchedTags = await fetchTags(repoInfo.owner, repoInfo.repo, pat);
+      const fetchedTags = await fetchTags(selectedRepo.owner.login, selectedRepo.name, token);
       setTags(fetchedTags);
       if (fetchedTags.length >= 2) {
         setStartRef(fetchedTags[1].name); // Default to second latest tag
@@ -84,46 +75,27 @@ const RepoForm: React.FC<RepoFormProps> = ({ onSubmit, loading }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!repoUrl || !startRef || !endRef) {
-      toast({ title: "Missing Information", description: "Please fill in all fields.", variant: "destructive" });
+    if (!selectedRepo || !startRef || !endRef) {
+      toast({ title: "Missing Information", description: "Please select a repository and choose start/end references.", variant: "destructive" });
       return;
     }
-    onSubmit(repoUrl, startRef, endRef, pat);
+    onSubmit(selectedRepo.html_url, startRef, endRef);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6 border rounded-lg shadow-sm bg-card">
       <div>
-        <Label htmlFor="repoUrl" className="flex items-center mb-2">
-          <Github className="h-4 w-4 mr-2" />
-          GitHub Repository URL
+        <Label htmlFor="repository" className="mb-2">
+          GitHub Repository
         </Label>
-        <Input
-          id="repoUrl"
-          type="url"
-          placeholder="https://github.com/owner/repo"
-          value={repoUrl}
-          onChange={handleRepoUrlChange}
-          required
+        <RepositoryPicker
+          onSelect={handleRepoSelect}
+          selectedRepo={selectedRepo}
         />
-      </div>
-      
-      <div>
-        <Label htmlFor="pat" className="flex items-center mb-2">
-          GitHub Personal Access Token (Optional)
-        </Label>
-        <Input
-          id="pat"
-          type="password"
-          placeholder="Enter your PAT for private repos or higher rate limits"
-          value={pat}
-          onChange={handlePatChange}
-        />
-        <p className="text-xs text-muted-foreground mt-1">Stored in browser's localStorage. Required for private repositories or to avoid rate limits.</p>
       </div>
 
-      {repoInfo && (
-        <Button type="button" onClick={loadTags} disabled={fetchingTags || !repoInfo} className="w-full">
+      {selectedRepo && (
+        <Button type="button" onClick={loadTags} disabled={fetchingTags || !selectedRepo} className="w-full">
           <Tags className="h-4 w-4 mr-2" />
           {fetchingTags ? 'Fetching Tags...' : 'Load Tags'}
         </Button>
@@ -171,7 +143,7 @@ const RepoForm: React.FC<RepoFormProps> = ({ onSubmit, loading }) => {
         </div>
       )}
       
-      <Button type="submit" disabled={loading || !repoUrl || !startRef || !endRef} className="w-full">
+      <Button type="submit" disabled={loading || !selectedRepo || !startRef || !endRef} className="w-full">
         <Wand2 className="h-4 w-4 mr-2" />
         {loading ? 'Generating...' : 'Generate Release Notes'}
       </Button>
