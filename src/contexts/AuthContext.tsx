@@ -42,7 +42,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGitHub = async () => {
     // Use VITE_SITE_URL if set, otherwise fallback to window.location.origin
-    const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin
+    let siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin
+    // Remove trailing slash if present
+    siteUrl = siteUrl.replace(/\/$/, '')
     const redirectUrl = `${siteUrl}/auth/callback`
     console.log('VITE_SITE_URL:', import.meta.env.VITE_SITE_URL)
     console.log('window.location.origin:', window.location.origin)
