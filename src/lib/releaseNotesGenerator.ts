@@ -1,5 +1,6 @@
 
 import { Commit, CategorizedCommits } from "@/types";
+import { enhanceReleaseNotes } from "./openai";
 
 export const categorizeCommits = (commits: Commit[]): CategorizedCommits => {
   const categorized: CategorizedCommits = {
@@ -56,4 +57,19 @@ export const generateMarkdown = (
   markdown += `\n**Full Changelog**: ${repoUrl}/compare/${startRef}...${endRef}\n`;
 
   return markdown;
+};
+
+export const generateEnhancedMarkdown = async (
+  categorizedCommits: CategorizedCommits,
+  repoUrl: string,
+  startRef: string,
+  endRef: string
+): Promise<string> => {
+  // First generate the basic markdown
+  const basicMarkdown = generateMarkdown(categorizedCommits, repoUrl, startRef, endRef);
+  
+  // Then enhance it with AI
+  const enhancedMarkdown = await enhanceReleaseNotes(basicMarkdown);
+  
+  return enhancedMarkdown;
 };

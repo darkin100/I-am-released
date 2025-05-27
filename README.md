@@ -10,6 +10,7 @@ A secure web application that generates beautiful release notes from your GitHub
 - 🔒 Access to both public and private repositories
 - 📋 Copy to clipboard or download as Markdown
 - 🎨 Clean, modern UI with dark mode support
+- ✨ AI-powered enhancement to make release notes more engaging (OpenAI)
 
 ## Prerequisites
 
@@ -91,6 +92,7 @@ Edit your `.env` file:
 ```env
 VITE_SUPABASE_URL=https://[your-project-ref].supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
+VITE_OPENAI_API_KEY=your-openai-api-key-here (optional, for AI enhancement)
 ```
 
 ### 5. Run the Application
@@ -117,6 +119,7 @@ npm run dev
      - `VITE_SUPABASE_URL`: Your Supabase project URL
      - `VITE_SUPABASE_ANON_KEY`: Your Supabase anon key
      - `VITE_SITE_URL`: Your Vercel app URL (e.g., `https://your-app.vercel.app`)
+     - `VITE_OPENAI_API_KEY`: Your OpenAI API key (optional, for AI enhancement)
 
 4. **Update Supabase redirect URLs**
    - Go to Supabase Dashboard → Authentication → URL Configuration
@@ -135,8 +138,9 @@ npm run dev
 5. Search and select from your public and private repositories
 6. Click "Load Tags" to fetch available tags
 7. Select start and end references (tags or commits)
-8. Click "Generate Release Notes"
-9. Copy or download your release notes!
+8. (Optional) Toggle "Enhance with AI" for more engaging release notes
+9. Click "Generate Release Notes"
+10. Copy or download your release notes!
 
 ## Troubleshooting
 
