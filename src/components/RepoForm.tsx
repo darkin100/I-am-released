@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -104,7 +103,7 @@ const RepoForm: React.FC<RepoFormProps> = ({ onSubmit, loading }) => {
       {tags.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="startRef">Start Ref (e.g., previous tag/commit)</Label>
+            <Label htmlFor="startRef">Start Ref (previous tag/commit)</Label>
             <Select onValueChange={setStartRef} value={startRef}>
               <SelectTrigger id="startRef">
                 <SelectValue placeholder="Select start tag/commit" />
@@ -113,16 +112,9 @@ const RepoForm: React.FC<RepoFormProps> = ({ onSubmit, loading }) => {
                 {tags.map(tag => <SelectItem key={tag.name} value={tag.name}>{tag.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Input
-              type="text"
-              placeholder="Or enter commit SHA / branch"
-              value={startRef}
-              onChange={(e) => setStartRef(e.target.value)}
-              className="mt-2"
-            />
           </div>
           <div>
-            <Label htmlFor="endRef">End Ref (e.g., current tag/commit)</Label>
+            <Label htmlFor="endRef">End Ref (current tag/commit)</Label>
             <Select onValueChange={setEndRef} value={endRef}>
               <SelectTrigger id="endRef">
                 <SelectValue placeholder="Select end tag/commit" />
@@ -132,13 +124,6 @@ const RepoForm: React.FC<RepoFormProps> = ({ onSubmit, loading }) => {
                 {tags.map(tag => <SelectItem key={tag.name} value={tag.name}>{tag.name}</SelectItem>)}
               </SelectContent>
             </Select>
-             <Input
-              type="text"
-              placeholder="Or enter commit SHA / branch"
-              value={endRef}
-              onChange={(e) => setEndRef(e.target.value)}
-              className="mt-2"
-            />
           </div>
         </div>
       )}
