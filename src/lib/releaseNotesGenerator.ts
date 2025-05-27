@@ -1,6 +1,6 @@
 
 import { Commit, CategorizedCommits } from "@/types";
-import { enhanceReleaseNotes } from "./openai";
+import { enhanceReleaseNotes } from "./api";
 
 export const categorizeCommits = (commits: Commit[]): CategorizedCommits => {
   const categorized: CategorizedCommits = {

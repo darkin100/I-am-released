@@ -11,6 +11,7 @@ A secure web application that generates beautiful release notes from your GitHub
 - 📋 Copy to clipboard or download as Markdown
 - 🎨 Clean, modern UI with dark mode support
 - ✨ AI-powered enhancement to make release notes more engaging (OpenAI)
+- 🔒 Secure API key handling with server-side processing
 
 ## Prerequisites
 
@@ -92,8 +93,9 @@ Edit your `.env` file:
 ```env
 VITE_SUPABASE_URL=https://[your-project-ref].supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
-VITE_OPENAI_API_KEY=your-openai-api-key-here (optional, for AI enhancement)
 ```
+
+Note: OpenAI API key is now configured server-side for security. See deployment section.
 
 ### 5. Run the Application
 
@@ -116,10 +118,16 @@ npm run dev
 
 3. **Configure environment variables in Vercel**
    - Add the following environment variables:
-     - `VITE_SUPABASE_URL`: Your Supabase project URL
-     - `VITE_SUPABASE_ANON_KEY`: Your Supabase anon key
-     - `VITE_SITE_URL`: Your Vercel app URL (e.g., `https://your-app.vercel.app`)
-     - `VITE_OPENAI_API_KEY`: Your OpenAI API key (optional, for AI enhancement)
+     
+   **Client-side variables (with VITE_ prefix):**
+   - `VITE_SUPABASE_URL`: Your Supabase project URL
+   - `VITE_SUPABASE_ANON_KEY`: Your Supabase anon key  
+   - `VITE_SITE_URL`: Your Vercel app URL (e.g., `https://your-app.vercel.app`)
+   
+   **Server-side variables (NO VITE_ prefix - more secure):**
+   - `OPENAI_API_KEY`: Your OpenAI API key (for AI enhancement)
+   - `SUPABASE_URL`: Your Supabase project URL (same as VITE_SUPABASE_URL)
+   - `SUPABASE_SERVICE_KEY`: Your Supabase service role key (from Settings → API)
 
 4. **Update Supabase redirect URLs**
    - Go to Supabase Dashboard → Authentication → URL Configuration
