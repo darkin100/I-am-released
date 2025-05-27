@@ -1,3 +1,0 @@
-// This file has been deprecated for security reasons
-// OpenAI API calls are now handled server-side
-// See src/lib/api.ts for the new implementation

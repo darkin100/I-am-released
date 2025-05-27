@@ -1,1 +1,0 @@
-// This file has been moved to enhance-release-notes.js for Vercel compatibility
