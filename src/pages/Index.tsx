@@ -113,7 +113,7 @@ const Index = () => {
       </main>
       <footer className="py-6 border-t mt-12">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Released. Built with Lovable.</p>
+          <p>&copy; {new Date().getFullYear()} I am Released</p>
         </div>
       </footer>
     </div>
