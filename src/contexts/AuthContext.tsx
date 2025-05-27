@@ -44,7 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Use VITE_SITE_URL if set, otherwise fallback to window.location.origin
     const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin
     const redirectUrl = `${siteUrl}/auth/callback`
-    console.log('Redirect URL:', redirectUrl)
+    console.log('VITE_SITE_URL:', import.meta.env.VITE_SITE_URL)
+    console.log('window.location.origin:', window.location.origin)
+    console.log('Final redirect URL:', redirectUrl)
     
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'github',

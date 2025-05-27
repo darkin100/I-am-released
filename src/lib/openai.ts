@@ -28,7 +28,6 @@ export async function enhanceReleaseNotes(markdown: string): Promise<string> {
 Guidelines:
 - Keep the same structure and all technical details
 - Make the language more engaging and enthusiastic
-- Add emojis where appropriate (but don't overdo it)
 - Highlight the benefits to users
 - Keep commit links and technical references intact
 - Maintain professionalism while being friendly
