@@ -3,11 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { fetchTags, Repository } from "@/lib/githubApi";
+import { Repository } from "@/lib/githubApi";
+import { secureGitHubAPI } from "@/lib/githubApiSecure";
 import { Tag } from "@/types";
 import { toast } from "@/hooks/use-toast";
 import { Tags, Wand2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 import { RepositoryPicker } from './RepositoryPicker';
 
 interface RepoFormProps {
@@ -21,7 +21,6 @@ const RepoForm: React.FC<RepoFormProps> = ({ onSubmit, loading }) => {
   const [startRef, setStartRef] = useState('');
   const [endRef, setEndRef] = useState('');
   const [fetchingTags, setFetchingTags] = useState(false);
-  const { getGitHubToken } = useAuth();
 
   // Clear tags when repository changes
   useEffect(() => {
@@ -43,15 +42,9 @@ const RepoForm: React.FC<RepoFormProps> = ({ onSubmit, loading }) => {
       return;
     }
     
-    const token = getGitHubToken();
-    if (!token) {
-      toast({ title: "Authentication Required", description: "Please sign in to continue.", variant: "destructive" });
-      return;
-    }
-    
     setFetchingTags(true);
     try {
-      const fetchedTags = await fetchTags(selectedRepo.owner.login, selectedRepo.name, token);
+      const fetchedTags = await secureGitHubAPI.fetchTags(selectedRepo.owner.login, selectedRepo.name);
       setTags(fetchedTags);
       if (fetchedTags.length >= 2) {
         setStartRef(fetchedTags[1].name); // Default to second latest tag
@@ -64,8 +57,8 @@ const RepoForm: React.FC<RepoFormProps> = ({ onSubmit, loading }) => {
         setEndRef('HEAD'); // Default to HEAD if no tags
       }
       toast({ title: "Tags loaded successfully!", description: `Found ${fetchedTags.length} tags.` });
-    } catch (error: any) {
-      toast({ title: "Error fetching tags", description: error.message, variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Error fetching tags", description: error instanceof Error ? error.message : 'An error occurred', variant: "destructive" });
       setTags([]);
     } finally {
       setFetchingTags(false);

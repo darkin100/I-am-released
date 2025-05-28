@@ -3,11 +3,11 @@ import React, { useState } from 'react';
 import Header from '@/components/Header';
 import RepoForm from '@/components/RepoForm';
 import ReleaseNotesPreview from '@/components/ReleaseNotesPreview';
-import { fetchCommitsBetweenRefs, parseRepoUrl } from '@/lib/githubApi';
+import { parseRepoUrl } from '@/lib/githubApiSecure';
+import { secureGitHubAPI } from '@/lib/githubApiSecure';
 import { categorizeCommits, generateMarkdown, generateEnhancedMarkdown } from '@/lib/releaseNotesGenerator';
 import { Commit } from '@/types';
 import { toast } from "@/hooks/use-toast";
-import { useAuth } from '@/contexts/AuthContext';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Sparkles } from 'lucide-react';
@@ -18,7 +18,6 @@ const Index = () => {
   const [fileName, setFileName] = useState('release-notes.md');
   const [useAI, setUseAI] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
-  const { getGitHubToken } = useAuth();
 
   const handleGenerateNotes = async (repoUrl: string, startRef: string, endRef: string) => {
     setLoading(true);
@@ -31,15 +30,8 @@ const Index = () => {
       return;
     }
 
-    const token = getGitHubToken();
-    if (!token) {
-      toast({ title: "Authentication Required", description: "Please sign in to continue.", variant: "destructive" });
-      setLoading(false);
-      return;
-    }
-
     try {
-      const commits: Commit[] = await fetchCommitsBetweenRefs(repoInfo.owner, repoInfo.repo, startRef, endRef, token);
+      const commits: Commit[] = await secureGitHubAPI.fetchCommitsBetweenRefs(repoInfo.owner, repoInfo.repo, startRef, endRef);
       
       if (commits.length === 0) {
         toast({ title: "No commits found", description: `No new commits found between ${startRef} and ${endRef}.`, variant: "default" });
@@ -50,7 +42,7 @@ const Index = () => {
       }
       
       const categorized = categorizeCommits(commits);
-      let markdown = generateMarkdown(categorized, repoUrl, startRef, endRef);
+      const markdown = generateMarkdown(categorized, repoUrl, startRef, endRef);
       
       // Show basic notes immediately
       setReleaseNotes(markdown);
@@ -72,8 +64,8 @@ const Index = () => {
       
       setFileName(`${repoInfo.repo}-${startRef}_${endRef}-release-notes.md`);
       toast({ title: "Release notes generated!", description: `Found ${commits.length} commits.` });
-    } catch (error: any) {
-      toast({ title: "Error Generating Notes", description: error.message, variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Error Generating Notes", description: error instanceof Error ? error.message : 'An error occurred', variant: "destructive" });
       setReleaseNotes('');
     } finally {
       setLoading(false);

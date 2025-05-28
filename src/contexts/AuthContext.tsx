@@ -8,7 +8,6 @@ interface AuthContextType {
   loading: boolean
   signInWithGitHub: () => Promise<void>
   signOut: () => Promise<void>
-  getGitHubToken: () => string | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -73,17 +72,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error
   }
 
-  const getGitHubToken = () => {
-    return session?.provider_token || null
-  }
-
   const value = {
     user,
     session,
     loading,
     signInWithGitHub,
-    signOut,
-    getGitHubToken
+    signOut
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

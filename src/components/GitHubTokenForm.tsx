@@ -1,3 +1,7 @@
+// DEPRECATED: This component is no longer used for security reasons
+// GitHub authentication is now handled through Supabase OAuth
+// Direct PAT usage has been removed to prevent token exposure
+
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

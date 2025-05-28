@@ -12,8 +12,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Search, GitBranch, Lock, Globe, Star } from 'lucide-react';
-import { fetchUserRepositories, Repository } from '@/lib/githubApi';
-import { useAuth } from '@/contexts/AuthContext';
+import { Repository } from '@/lib/githubApi';
+import { secureGitHubAPI } from '@/lib/githubApiSecure';
 import { toast } from "@/hooks/use-toast";
 
 interface RepositoryPickerProps {
@@ -29,18 +29,11 @@ export const RepositoryPicker: React.FC<RepositoryPickerProps> = ({ onSelect, se
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const { getGitHubToken } = useAuth();
 
   const loadRepositories = useCallback(async (pageNum: number) => {
-    const token = getGitHubToken();
-    if (!token) {
-      toast({ title: "Authentication Required", description: "Please sign in to continue.", variant: "destructive" });
-      return;
-    }
-
     setLoading(true);
     try {
-      const { repositories: newRepos, hasMore: more } = await fetchUserRepositories(token, pageNum);
+      const { repositories: newRepos, hasMore: more } = await secureGitHubAPI.fetchUserRepositories(pageNum);
       
       if (pageNum === 1) {
         setRepositories(newRepos);
@@ -51,12 +44,12 @@ export const RepositoryPicker: React.FC<RepositoryPickerProps> = ({ onSelect, se
       }
       
       setHasMore(more);
-    } catch (error: any) {
-      toast({ title: "Error loading repositories", description: error.message, variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Error loading repositories", description: error instanceof Error ? error.message : 'An error occurred', variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  }, [getGitHubToken]);
+  }, []);
 
   useEffect(() => {
     if (open && repositories.length === 0) {
