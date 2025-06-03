@@ -2,39 +2,6 @@
 
 ## 🚨 Critical Issues (Immediate Action Required)
 
-### 1. OpenAI API Key Exposure
-**Problem**: OpenAI API key is exposed in the browser, allowing anyone to steal and use it.
-
-**Solution**: Create a Vercel Edge Function to proxy OpenAI requests:
-```typescript
-// api/enhance-release-notes.ts
-import OpenAI from 'openai';
-
-export default async function handler(req: Request) {
-  // Verify authentication
-  const token = req.headers.get('Authorization');
-  if (!verifySupabaseToken(token)) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY, // Server-side only
-  });
-
-  // Process request...
-}
-```
-
-### 2. GitHub Token Handling
-**Problem**: GitHub tokens are accessible in the browser.
-
-**Solution**: 
-- Use Supabase Edge Functions or Vercel Functions to proxy GitHub API calls
-- Never expose the provider_token to the client
-- Implement token refresh on the server side
-
-## ⚠️ High Priority Issues
-
 ### 3. Rate Limiting
 **Problem**: No rate limiting on API calls.
 
