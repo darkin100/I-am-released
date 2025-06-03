@@ -24,6 +24,14 @@ class SecureGitHubAPI {
         endpoint,
         ...params
       })
+    }).catch(error => {
+      // In development, provide a helpful error message
+      if (import.meta.env.DEV) {
+        console.error('API route not available in Vite dev mode.');
+        console.error('To use GitHub features, run: npm run dev:vercel');
+        throw new Error('API routes require Vercel dev server. Run: npm run dev:vercel');
+      }
+      throw error;
     });
 
     if (!response.ok) {

@@ -6,12 +6,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm install          # Install dependencies
-npm run dev          # Start dev server (port 8080)
+npm run dev          # Start dev server (port 8080) - Note: API routes won't work
+npm run dev:vercel   # Start Vercel dev server with API routes (recommended)
 npm run build        # Production build
 npm run build:dev    # Development build
 npm run lint         # Run ESLint
 npm run preview      # Preview production build
 ```
+
+### Important: Local Development with API Routes
+
+The application uses Vercel serverless functions for API routes (`/api/*`). When running locally:
+
+1. **For full functionality** (including GitHub integration): Use `npm run dev:vercel`
+   - This runs the Vercel dev server which handles both frontend and API routes
+   - First time setup may ask you to link to a Vercel project (you can skip this)
+
+2. **For frontend-only development**: Use `npm run dev`
+   - This runs only the Vite dev server
+   - API routes will return 404 errors
+   - GitHub integration features won't work
 
 ## Architecture Overview
 
