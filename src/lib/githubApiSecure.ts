@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { Commit, Tag } from '@/types';
 import { Repository } from './githubApi';
+import { githubOwnerSchema, githubRepoSchema } from './validation';
 
 // Secure GitHub API wrapper that uses server-side proxy
 class SecureGitHubAPI {
@@ -35,9 +36,13 @@ class SecureGitHubAPI {
 
   async fetchTags(owner: string, repo: string): Promise<Tag[]> {
     try {
+      // Validate inputs
+      const validatedOwner = githubOwnerSchema.parse(owner);
+      const validatedRepo = githubRepoSchema.parse(repo);
+      
       const result = await this.callAPI('repos.listTags', {
-        owner,
-        repo,
+        owner: validatedOwner,
+        repo: validatedRepo,
         per_page: 100
       });
 
@@ -61,9 +66,13 @@ class SecureGitHubAPI {
     head: string
   ): Promise<Commit[]> {
     try {
+      // Validate inputs
+      const validatedOwner = githubOwnerSchema.parse(owner);
+      const validatedRepo = githubRepoSchema.parse(repo);
+      
       const result = await this.callAPI('repos.compareCommits', {
-        owner,
-        repo,
+        owner: validatedOwner,
+        repo: validatedRepo,
         base,
         head,
         per_page: 100
@@ -120,9 +129,13 @@ class SecureGitHubAPI {
 
   async getRepository(owner: string, repo: string): Promise<Repository> {
     try {
+      // Validate inputs
+      const validatedOwner = githubOwnerSchema.parse(owner);
+      const validatedRepo = githubRepoSchema.parse(repo);
+      
       const result = await this.callAPI('repos.get', {
-        owner,
-        repo
+        owner: validatedOwner,
+        repo: validatedRepo
       });
 
       return result.data;

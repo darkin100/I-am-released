@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai');
+const { sanitizeMarkdown } = require('./validation/schemas');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -70,9 +71,20 @@ module.exports = async function handler(req, res) {
 
     // Validate request body
     const { markdown } = req.body;
-    if (!markdown || typeof markdown !== 'string' || markdown.length > 10000) {
-      return res.status(400).json({ error: 'Invalid request' });
+    if (!markdown || typeof markdown !== 'string') {
+      return res.status(400).json({ error: 'Invalid request: markdown field is required' });
     }
+    
+    if (markdown.length < 10) {
+      return res.status(400).json({ error: 'Invalid request: markdown content too short' });
+    }
+    
+    if (markdown.length > 10000) {
+      return res.status(400).json({ error: 'Invalid request: markdown content too long (max 10000 characters)' });
+    }
+    
+    // Sanitize the markdown input
+    const sanitizedMarkdown = sanitizeMarkdown(markdown);
 
     // Initialize OpenAI with server-side key
     const openai = new OpenAI.OpenAI({
@@ -98,7 +110,7 @@ Guidelines:
         },
         {
           role: 'user',
-          content: markdown
+          content: sanitizedMarkdown
         }
       ],
       temperature: 0.7,

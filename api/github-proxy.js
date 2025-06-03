@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const { Octokit } = require('@octokit/rest');
+const { validateGitHubEndpoint } = require('./validation/schemas');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -109,22 +110,28 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid endpoint' });
     }
 
+    // Validate parameters for the endpoint
+    const validation = validateGitHubEndpoint(endpoint, params);
+    if (validation.error) {
+      return res.status(400).json({ error: validation.error });
+    }
+
     let result;
     switch (endpoint) {
       case 'repos.listTags':
-        result = await octokit.repos.listTags(params);
+        result = await octokit.repos.listTags(validation.value);
         break;
       
       case 'repos.compareCommits':
-        result = await octokit.repos.compareCommits(params);
+        result = await octokit.repos.compareCommits(validation.value);
         break;
       
       case 'repos.listForAuthenticatedUser':
-        result = await octokit.repos.listForAuthenticatedUser(params);
+        result = await octokit.repos.listForAuthenticatedUser(validation.value);
         break;
       
       case 'repos.get':
-        result = await octokit.repos.get(params);
+        result = await octokit.repos.get(validation.value);
         break;
       
       default:

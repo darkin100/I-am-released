@@ -9,6 +9,8 @@ import { Tag } from "@/types";
 import { toast } from "@/hooks/use-toast";
 import { Tags, Wand2 } from 'lucide-react';
 import { RepositoryPicker } from './RepositoryPicker';
+import { githubRepoUrlSchema } from '@/lib/validation';
+import { z } from 'zod';
 
 interface RepoFormProps {
   onSubmit: (repoUrl: string, startRef: string, endRef: string) => void;
@@ -71,6 +73,21 @@ const RepoForm: React.FC<RepoFormProps> = ({ onSubmit, loading }) => {
       toast({ title: "Missing Information", description: "Please select a repository and choose start/end references.", variant: "destructive" });
       return;
     }
+    
+    // Validate repository URL
+    try {
+      githubRepoUrlSchema.parse(selectedRepo.html_url);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast({ 
+          title: "Invalid Repository", 
+          description: error.errors[0].message, 
+          variant: "destructive" 
+        });
+        return;
+      }
+    }
+    
     onSubmit(selectedRepo.html_url, startRef, endRef);
   };
 
