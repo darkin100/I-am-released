@@ -2,9 +2,14 @@ const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai');
 const { sanitizeMarkdown } = require('./validation/schemas');
 
+// Check for required environment variables
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+  console.error('Missing required environment variables: SUPABASE_URL or SUPABASE_SERVICE_KEY');
+}
+
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_KEY || ''
 );
 
 // Rate limiting store (in production, use Vercel KV or Redis)

@@ -2,9 +2,14 @@ const { createClient } = require('@supabase/supabase-js');
 const { Octokit } = require('@octokit/rest');
 const { validateGitHubEndpoint } = require('./validation/schemas');
 
+// Check for required environment variables
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+  console.error('Missing required environment variables: SUPABASE_URL or SUPABASE_SERVICE_KEY');
+}
+
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_KEY || ''
 );
 
 // Rate limiting store (in production, use Vercel KV or Redis)
@@ -80,7 +85,20 @@ module.exports = async function handler(req, res) {
     return;
   }
 
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
+    // Check for required environment variables
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+      console.error('GitHub proxy: Missing Supabase environment variables');
+      return res.status(500).json({ 
+        error: 'Server configuration error. Please check environment variables.' 
+      });
+    }
+
     // Verify authentication
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
