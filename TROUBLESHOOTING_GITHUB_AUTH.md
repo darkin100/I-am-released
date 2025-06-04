@@ -1,5 +1,39 @@
 # GitHub Authentication Troubleshooting
 
+## Issue: "Unable to exchange external code"
+
+This error occurs when the OAuth authorization code cannot be exchanged for a session token. The error message may show URL-encoded characters like `code%3A`.
+
+### Common Causes:
+
+1. **Redirect URL Mismatch**: The callback URL in your GitHub OAuth app doesn't match what Supabase expects
+2. **Missing Environment Variables**: `VITE_SITE_URL` not set correctly
+3. **Supabase Configuration**: Provider token storage not enabled
+
+### Solutions:
+
+#### 1. Fix GitHub OAuth App Callback URL
+
+1. Go to GitHub → Settings → Developer settings → OAuth Apps
+2. Select your app
+3. Set the **Authorization callback URL** to exactly:
+   ```
+   https://[your-supabase-project-ref].supabase.co/auth/v1/callback
+   ```
+   - Replace `[your-supabase-project-ref]` with your actual Supabase project reference
+   - This URL must match EXACTLY (including https://)
+
+#### 2. Update Vercel Environment Variables
+
+Add this to your Vercel environment variables:
+- `VITE_SITE_URL`: `https://iamreleased.glyndarkin.co.uk` (your production URL)
+
+#### 3. Clear Browser Data
+
+1. Clear all cookies for your domain
+2. Clear localStorage
+3. Try signing in again in an incognito/private window
+
 ## Issue: "GitHub authentication required. Please sign out and sign in again"
 
 This error occurs when the GitHub provider token is not properly stored in the user's session during OAuth authentication.

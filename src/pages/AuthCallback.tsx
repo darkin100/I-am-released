@@ -9,19 +9,50 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Get error from URL first
+        // Log the full URL for debugging
+        console.log('Auth callback URL:', window.location.href)
+        console.log('Hash:', window.location.hash)
+        console.log('Search:', window.location.search)
+        
+        // Get error from URL first (could be in hash or query params)
         const hashParams = new URLSearchParams(window.location.hash.substring(1))
-        const urlError = hashParams.get('error')
-        const errorDescription = hashParams.get('error_description')
+        const queryParams = new URLSearchParams(window.location.search)
+        
+        const urlError = hashParams.get('error') || queryParams.get('error')
+        const errorDescription = hashParams.get('error_description') || queryParams.get('error_description')
         
         if (urlError) {
           console.error('OAuth error:', urlError, errorDescription)
-          setError(errorDescription || urlError)
+          
+          // Decode the error description if it's URL encoded
+          const decodedError = errorDescription ? decodeURIComponent(errorDescription) : urlError
+          setError(decodedError)
           return
         }
 
-        // Supabase will handle the callback automatically with detectSessionInUrl: true
-        // Just check if session exists
+        // Check if we have an authorization code in the URL
+        const code = queryParams.get('code')
+        if (code) {
+          console.log('Authorization code found, exchanging for session...')
+          
+          // Exchange the code for a session
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+          
+          if (exchangeError) {
+            console.error('Code exchange error:', exchangeError)
+            setError(exchangeError.message)
+            return
+          }
+          
+          if (data?.session) {
+            console.log('Session established from code exchange:', data.session)
+            console.log('Provider token available:', !!data.session.provider_token)
+            navigate('/', { replace: true })
+            return
+          }
+        }
+
+        // Fallback: check if session already exists
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError) {
