@@ -40,10 +40,45 @@ async function checkRateLimit(userId, limit = 60, logger = null) {
 
 async function getProviderToken(userId, sessionToken, logger = null) {
   try {
-    // Create a Supabase client with the user's session token
+    // Create admin client to access user session data directly
+    const adminSupabase = createClient(
+      process.env.SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_KEY || ''
+    );
+
+    // Get user info using the session token
+    const { data: { user }, error: userError } = await adminSupabase.auth.getUser(sessionToken);
+    
+    if (userError || !user) {
+      if (logger) logger.error('Failed to get user from session token', userError);
+      throw new Error('Invalid session');
+    }
+
+    // Try to get the session using admin privileges
+    const { data: sessionData, error: sessionError } = await adminSupabase.auth.admin.getUserById(userId);
+    
+    if (sessionError) {
+      if (logger) logger.error('Failed to get user session data', sessionError);
+    } else if (sessionData?.user?.app_metadata?.provider_token) {
+      if (logger) logger.info('Provider token found in user metadata');
+      return sessionData.user.app_metadata.provider_token;
+    } else if (sessionData?.user?.user_metadata?.provider_token) {
+      if (logger) logger.info('Provider token found in user metadata (alternative location)');
+      return sessionData.user.user_metadata.provider_token;
+    } else {
+      if (logger) logger.warn('No provider token in user metadata', {
+        hasUser: !!sessionData?.user,
+        hasAppMetadata: !!sessionData?.user?.app_metadata,
+        hasUserMetadata: !!sessionData?.user?.user_metadata,
+        appMetadataKeys: sessionData?.user?.app_metadata ? Object.keys(sessionData.user.app_metadata) : [],
+        userMetadataKeys: sessionData?.user?.user_metadata ? Object.keys(sessionData.user.user_metadata) : []
+      });
+    }
+
+    // Alternative: Try to access the current session with the provided token
     const userSupabase = createClient(
       process.env.SUPABASE_URL || '',
-      process.env.SUPABASE_ANON_KEY || '', // Use anon key for user operations
+      process.env.SUPABASE_ANON_KEY || '',
       {
         global: {
           headers: {
@@ -53,37 +88,50 @@ async function getProviderToken(userId, sessionToken, logger = null) {
       }
     );
 
-    // Get the session using the user's token
-    const { data: sessionData, error: sessionError } = await userSupabase.auth.getSession();
+    const { data: currentSession, error: currentSessionError } = await userSupabase.auth.getSession();
     
-    if (sessionError) {
-      if (logger) logger.error('Failed to get session with user token', sessionError);
-    } else if (sessionData?.session?.provider_token) {
-      if (logger) logger.info('Provider token retrieved from user session');
-      return sessionData.session.provider_token;
-    } else {
-      if (logger) logger.warn('No provider token in user session', {
-        hasSession: !!sessionData?.session,
-        sessionKeys: sessionData?.session ? Object.keys(sessionData.session) : []
-      });
+    if (!currentSessionError && currentSession?.session?.provider_token) {
+      if (logger) logger.info('Provider token found in current session');
+      return currentSession.session.provider_token;
+    } else if (currentSessionError) {
+      if (logger) logger.error('Failed to get current session', currentSessionError);
     }
 
-    // Try to refresh the session to get fresh tokens
-    const { data: refreshData, error: refreshError } = await userSupabase.auth.refreshSession();
-    
-    if (!refreshError && refreshData?.session?.provider_token) {
-      if (logger) logger.info('Provider token retrieved from refreshed session');
-      return refreshData.session.provider_token;
-    } else if (refreshError) {
-      if (logger) logger.error('Failed to refresh session', refreshError);
+    // Last resort: Check if the access token itself can be used as a GitHub token
+    // This shouldn't normally work but is worth trying
+    if (currentSession?.session?.access_token) {
+      if (logger) logger.warn('Attempting to use access token as provider token');
+      
+      // Test if the access token works with GitHub API
+      try {
+        const testResponse = await fetch('https://api.github.com/user', {
+          headers: {
+            'Authorization': `Bearer ${currentSession.session.access_token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'I-Am-Released-App'
+          }
+        });
+        
+        if (testResponse.ok) {
+          if (logger) logger.info('Access token works as GitHub token');
+          return currentSession.session.access_token;
+        } else {
+          if (logger) logger.warn('Access token does not work with GitHub API', { status: testResponse.status });
+        }
+      } catch (testError) {
+        if (logger) logger.error('Failed to test access token with GitHub', testError);
+      }
     }
 
     // If we get here, the user needs to re-authenticate with GitHub
-    if (logger) logger.error('No provider token available - user needs to re-authenticate');
-    throw new Error('GitHub token not found - please sign out and sign in again');
+    if (logger) logger.error('No provider token available - user needs to re-authenticate with GitHub');
+    throw new Error('GitHub authentication required. Please sign out and sign in again to reconnect your GitHub account.');
     
   } catch (error) {
     if (logger) logger.error('Error getting provider token', error);
+    if (error.message.includes('GitHub authentication required')) {
+      throw error; // Re-throw the specific error message
+    }
     throw new Error('GitHub token not found');
   }
 }
