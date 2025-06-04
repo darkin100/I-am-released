@@ -90,11 +90,28 @@ async function getProviderToken(userId, sessionToken, logger = null) {
 
     const { data: currentSession, error: currentSessionError } = await userSupabase.auth.getSession();
     
-    if (!currentSessionError && currentSession?.session?.provider_token) {
-      if (logger) logger.info('Provider token found in current session');
-      return currentSession.session.provider_token;
+    if (!currentSessionError && currentSession?.session) {
+      if (logger) logger.info('Current session found', {
+        hasProviderToken: !!currentSession.session.provider_token,
+        hasProviderRefreshToken: !!currentSession.session.provider_refresh_token,
+        sessionKeys: Object.keys(currentSession.session)
+      });
+      
+      if (currentSession.session.provider_token) {
+        if (logger) logger.info('Provider token found in current session');
+        return currentSession.session.provider_token;
+      }
     } else if (currentSessionError) {
       if (logger) logger.error('Failed to get current session', currentSessionError);
+    }
+    
+    // Try to get the provider token from the identity data
+    if (sessionData?.user?.identities && sessionData.user.identities.length > 0) {
+      const githubIdentity = sessionData.user.identities.find(id => id.provider === 'github');
+      if (githubIdentity?.identity_data?.provider_token) {
+        if (logger) logger.info('Provider token found in identity data');
+        return githubIdentity.identity_data.provider_token;
+      }
     }
 
     // Last resort: Check if the access token itself can be used as a GitHub token
