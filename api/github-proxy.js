@@ -38,37 +38,89 @@ async function checkRateLimit(userId, limit = 60, logger = null) {
   return true;
 }
 
-async function getProviderToken(userId, sessionToken) {
+async function getProviderToken(userId, sessionToken, logger = null) {
   try {
     // First, try to get the current session to check token validity
     const { data: { user }, error: userError } = await supabase.auth.getUser(sessionToken);
     
     if (userError || !user) {
+      if (logger) logger.error('Failed to get user from session token', userError);
       throw new Error('Invalid session');
+    }
+
+    // Try to get session with provider token from the session token
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    
+    if (!sessionError && sessionData?.session?.provider_token) {
+      if (logger) logger.info('Provider token retrieved from session');
+      return sessionData.session.provider_token;
     }
 
     // Try to refresh the session to get fresh tokens
     const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
     
     if (!refreshError && refreshData?.session?.provider_token) {
-      // Return the refreshed token
+      if (logger) logger.info('Provider token retrieved from refreshed session');
       return refreshData.session.provider_token;
     }
 
-    // Fallback: fetch from database (this might be stale)
-    const { data, error } = await supabase
+    // Fallback: fetch from database using service role key
+    if (logger) logger.warn('Attempting to fetch provider token from database');
+    
+    // Create admin client with service role key
+    const adminSupabase = createClient(
+      process.env.SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_KEY || ''
+    );
+    
+    // Try both possible table names for user data
+    let data, error;
+    
+    // First try auth.users (Supabase auth schema)
+    const authResult = await adminSupabase
       .from('auth.users')
       .select('raw_app_meta_data')
       .eq('id', userId)
       .single();
-
-    if (error || !data?.raw_app_meta_data?.provider_token) {
-      throw new Error('GitHub token not found');
+    
+    if (!authResult.error && authResult.data) {
+      data = authResult.data;
+      error = null;
+      if (logger) logger.info('Found user data in auth.users table');
+    } else {
+      // Fallback to users table (custom schema)
+      const usersResult = await adminSupabase
+        .from('users')
+        .select('raw_app_meta_data')
+        .eq('id', userId)
+        .single();
+      
+      data = usersResult.data;
+      error = usersResult.error;
+      if (!error && data) {
+        if (logger) logger.info('Found user data in users table');
+      } else {
+        if (logger) logger.error('Failed to find user in both auth.users and users tables', { 
+          authError: authResult.error?.message,
+          usersError: usersResult.error?.message
+        });
+      }
     }
 
+    if (error) {
+      if (logger) logger.error('Database query error', error);
+      throw new Error('Failed to query user data');
+    }
+
+    if (!data?.raw_app_meta_data?.provider_token) {
+      if (logger) logger.error('No provider token in user data', { hasData: !!data, hasMetaData: !!data?.raw_app_meta_data });
+      throw new Error('GitHub token not found in user data');
+    }
+
+    if (logger) logger.info('Provider token retrieved from database');
     return data.raw_app_meta_data.provider_token;
   } catch (error) {
-    console.error('Error getting provider token:', error);
+    if (logger) logger.error('Error getting provider token', error);
     throw new Error('GitHub token not found');
   }
 }
@@ -99,13 +151,22 @@ async function githubProxyHandler(req, res) {
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
       logger.error('Missing Supabase environment variables', null, {
         hasSupabaseUrl: !!process.env.SUPABASE_URL,
-        hasSupabaseKey: !!process.env.SUPABASE_SERVICE_KEY
+        hasSupabaseKey: !!process.env.SUPABASE_SERVICE_KEY,
+        supabaseUrlLength: process.env.SUPABASE_URL?.length || 0,
+        supabaseKeyLength: process.env.SUPABASE_SERVICE_KEY?.length || 0
       });
       return res.status(500).json({ 
         error: 'Server configuration error. Please check environment variables.',
         requestId: logger.requestId
       });
     }
+    
+    logger.debug('Environment variables check passed', {
+      hasSupabaseUrl: !!process.env.SUPABASE_URL,
+      hasSupabaseKey: !!process.env.SUPABASE_SERVICE_KEY,
+      supabaseUrlLength: process.env.SUPABASE_URL?.length || 0,
+      supabaseKeyLength: process.env.SUPABASE_SERVICE_KEY?.length || 0
+    });
 
     // Verify authentication
     const authHeader = req.headers.authorization;
@@ -140,7 +201,7 @@ async function githubProxyHandler(req, res) {
     const tokenStartTime = Date.now();
     let providerToken;
     try {
-      providerToken = await getProviderToken(user.id, token);
+      providerToken = await getProviderToken(user.id, token, logger);
       logger.info('Provider token retrieved successfully', { 
         userId: user.id,
         duration: Date.now() - tokenStartTime
