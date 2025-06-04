@@ -33,21 +33,42 @@ export default function AuthCallback() {
         // Check if we have an authorization code in the URL
         const code = queryParams.get('code')
         if (code) {
-          console.log('Authorization code found, exchanging for session...')
+          console.log('Authorization code found:', code)
+          console.log('Attempting to exchange code for session...')
           
-          // Exchange the code for a session
-          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-          
-          if (exchangeError) {
-            console.error('Code exchange error:', exchangeError)
-            setError(exchangeError.message)
-            return
-          }
-          
-          if (data?.session) {
-            console.log('Session established from code exchange:', data.session)
-            console.log('Provider token available:', !!data.session.provider_token)
-            navigate('/', { replace: true })
+          try {
+            // Exchange the code for a session
+            const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+            
+            if (exchangeError) {
+              console.error('Code exchange error details:', {
+                error: exchangeError,
+                message: exchangeError.message,
+                status: exchangeError.status,
+                code: code.substring(0, 8) + '...' // Log partial code for debugging
+              })
+              
+              // Check for specific error types
+              if (exchangeError.message?.includes('invalid_grant')) {
+                setError('Authorization code expired or already used. Please try signing in again.')
+              } else if (exchangeError.message?.includes('invalid_client')) {
+                setError('OAuth configuration error. Please contact support.')
+              } else {
+                setError(exchangeError.message || 'Failed to complete authentication')
+              }
+              return
+            }
+            
+            if (data?.session) {
+              console.log('Session established from code exchange:', data.session)
+              console.log('Provider token available:', !!data.session.provider_token)
+              console.log('Access token type:', data.session.token_type)
+              navigate('/', { replace: true })
+              return
+            }
+          } catch (err) {
+            console.error('Unexpected error during code exchange:', err)
+            setError('An unexpected error occurred during authentication')
             return
           }
         }
