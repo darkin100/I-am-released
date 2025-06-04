@@ -34,7 +34,26 @@ export default function AuthCallback() {
         const code = queryParams.get('code')
         if (code) {
           console.log('Authorization code found:', code)
-          console.log('Attempting to exchange code for session...')
+          
+          // First check if we already have a session (Supabase might have handled it automatically)
+          const { data: { session: existingSession } } = await supabase.auth.getSession()
+          
+          if (existingSession) {
+            console.log('Session already established by Supabase:', existingSession)
+            console.log('Provider token available:', !!existingSession.provider_token)
+            console.log('Provider refresh token available:', !!existingSession.provider_refresh_token)
+            
+            // Check if we have GitHub tokens
+            if (!existingSession.provider_token) {
+              console.warn('No provider token in session - user may need to re-authenticate')
+            }
+            
+            navigate('/', { replace: true })
+            return
+          }
+          
+          // Only try to exchange code if no session exists
+          console.log('No existing session, attempting to exchange code...')
           
           try {
             // Exchange the code for a session
@@ -49,6 +68,16 @@ export default function AuthCallback() {
               })
               
               // Check for specific error types
+              if (exchangeError.message?.includes('code verifier should be non-empty')) {
+                // This usually means the code was already used
+                const { data: { session: retrySession } } = await supabase.auth.getSession()
+                if (retrySession) {
+                  console.log('Session found after code exchange error')
+                  navigate('/', { replace: true })
+                  return
+                }
+              }
+              
               if (exchangeError.message?.includes('invalid_grant')) {
                 setError('Authorization code expired or already used. Please try signing in again.')
               } else if (exchangeError.message?.includes('invalid_client')) {
