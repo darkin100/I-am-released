@@ -1,6 +1,5 @@
 
 import { Commit, CategorizedCommits } from "@/types";
-import { enhanceReleaseNotes } from "./api";
 
 export const categorizeCommits = (commits: Commit[]): CategorizedCommits => {
   const categorized: CategorizedCommits = {
@@ -59,17 +58,3 @@ export const generateMarkdown = (
   return markdown;
 };
 
-export const generateEnhancedMarkdown = async (
-  categorizedCommits: CategorizedCommits,
-  repoUrl: string,
-  startRef: string,
-  endRef: string
-): Promise<string> => {
-  // First generate the basic markdown
-  const basicMarkdown = generateMarkdown(categorizedCommits, repoUrl, startRef, endRef);
-  
-  // Then enhance it with AI
-  const enhancedMarkdown = await enhanceReleaseNotes(basicMarkdown);
-  
-  return enhancedMarkdown;
-};

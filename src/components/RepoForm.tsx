@@ -1,52 +1,52 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Repository } from "@/lib/githubApi";
-import { secureGitHubAPI } from "@/lib/githubApiSecure";
+import { githubAPI } from "@/lib/githubApi";
 import { Tag } from "@/types";
 import { toast } from "@/hooks/use-toast";
 import { Tags, Wand2 } from 'lucide-react';
-import { RepositoryPicker } from './RepositoryPicker';
-import { githubRepoUrlSchema } from '@/lib/validation';
-import { z } from 'zod';
 
 interface RepoFormProps {
-  onSubmit: (repoUrl: string, startRef: string, endRef: string) => void;
+  onSubmit: (repoUrl: string, startRef: string, endRef: string, token: string) => void;
   loading: boolean;
 }
 
 const RepoForm: React.FC<RepoFormProps> = ({ onSubmit, loading }) => {
-  const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
+  const [repoUrl, setRepoUrl] = useState('');
+  const [token, setToken] = useState('');
   const [tags, setTags] = useState<Tag[]>([]);
   const [startRef, setStartRef] = useState('');
   const [endRef, setEndRef] = useState('');
   const [fetchingTags, setFetchingTags] = useState(false);
 
-  // Clear tags when repository changes
+  // Clear tags when repository URL changes
   useEffect(() => {
-    if (selectedRepo) {
+    if (repoUrl) {
       setTags([]);
       setStartRef('');
       setEndRef('');
     }
-  }, [selectedRepo]);
-
-  const handleRepoSelect = (repo: Repository) => {
-    setSelectedRepo(repo);
-  };
+  }, [repoUrl]);
   
 
   const loadTags = async () => {
-    if (!selectedRepo) {
-      toast({ title: "No Repository Selected", description: "Please select a repository first.", variant: "destructive" });
+    if (!repoUrl || !token) {
+      toast({ title: "Missing Information", description: "Please provide a repository URL and GitHub token first.", variant: "destructive" });
+      return;
+    }
+
+    const repoInfo = githubAPI.parseRepoUrl(repoUrl);
+    if (!repoInfo) {
+      toast({ title: "Invalid Repository URL", description: "Please provide a valid GitHub repository URL.", variant: "destructive" });
       return;
     }
     
     setFetchingTags(true);
     try {
-      const fetchedTags = await secureGitHubAPI.fetchTags(selectedRepo.owner.login, selectedRepo.name);
+      const fetchedTags = await githubAPI.fetchTags(repoInfo.owner, repoInfo.repo, token);
       setTags(fetchedTags);
       if (fetchedTags.length >= 2) {
         setStartRef(fetchedTags[1].name); // Default to second latest tag
@@ -69,42 +69,46 @@ const RepoForm: React.FC<RepoFormProps> = ({ onSubmit, loading }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedRepo || !startRef || !endRef) {
-      toast({ title: "Missing Information", description: "Please select a repository and choose start/end references.", variant: "destructive" });
+    if (!repoUrl || !token || !startRef || !endRef) {
+      toast({ title: "Missing Information", description: "Please provide all required fields.", variant: "destructive" });
       return;
     }
     
-    // Validate repository URL
-    try {
-      githubRepoUrlSchema.parse(selectedRepo.html_url);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        toast({ 
-          title: "Invalid Repository", 
-          description: error.errors[0].message, 
-          variant: "destructive" 
-        });
-        return;
-      }
-    }
-    
-    onSubmit(selectedRepo.html_url, startRef, endRef);
+    onSubmit(repoUrl, startRef, endRef, token);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-6 border rounded-lg shadow-sm bg-card">
       <div>
-        <Label htmlFor="repository" className="mb-2">
-          GitHub Repository
+        <Label htmlFor="repoUrl" className="mb-2">
+          GitHub Repository URL
         </Label>
-        <RepositoryPicker
-          onSelect={handleRepoSelect}
-          selectedRepo={selectedRepo}
+        <Input
+          id="repoUrl"
+          type="url"
+          placeholder="https://github.com/owner/repo"
+          value={repoUrl}
+          onChange={(e) => setRepoUrl(e.target.value)}
+          required
         />
       </div>
 
-      {selectedRepo && (
-        <Button type="button" onClick={loadTags} disabled={fetchingTags || !selectedRepo} className="w-full">
+      <div>
+        <Label htmlFor="token" className="mb-2">
+          GitHub Personal Access Token
+        </Label>
+        <Input
+          id="token"
+          type="password"
+          placeholder="ghp_..."
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          required
+        />
+      </div>
+
+      {repoUrl && token && (
+        <Button type="button" onClick={loadTags} disabled={fetchingTags} className="w-full">
           <Tags className="h-4 w-4 mr-2" />
           {fetchingTags ? 'Fetching Tags...' : 'Load Tags'}
         </Button>
@@ -138,7 +142,7 @@ const RepoForm: React.FC<RepoFormProps> = ({ onSubmit, loading }) => {
         </div>
       )}
       
-      <Button type="submit" disabled={loading || !selectedRepo || !startRef || !endRef} className="w-full">
+      <Button type="submit" disabled={loading || !repoUrl || !token || !startRef || !endRef} className="w-full">
         <Wand2 className="h-4 w-4 mr-2" />
         {loading ? 'Generating...' : 'Generate Release Notes'}
       </Button>

@@ -75,7 +75,7 @@ export const fetchCommitsBetweenRefs = async (
   } catch (error) {
     console.error("Error fetching commits:", error);
     let errorMessage = "Failed to fetch commits.";
-    if (error instanceof Error && 'status' in error && (error as any).status === 404) {
+    if (error instanceof Error && 'status' in error && (error as Error & { status: number }).status === 404) {
       errorMessage = "Failed to fetch commits. One of the tags/commits might not exist or the repository is private and no PAT was provided.";
     } else if (error instanceof Error) {
       errorMessage = `Failed to fetch commits: ${error.message}`;
@@ -122,4 +122,11 @@ export const fetchUserRepositories = async (token: string, page = 1, per_page = 
     console.error("Error fetching repositories:", error);
     throw new Error("Failed to fetch repositories. Please try again.");
   }
+};
+
+export const githubAPI = {
+  fetchCommitsBetweenRefs,
+  fetchTags,
+  fetchUserRepositories,
+  parseRepoUrl
 };
