@@ -1,5 +1,4 @@
 const { createClient } = require('@supabase/supabase-js');
-const OpenAI = require('openai');
 const { sanitizeMarkdown } = require('./validation/schemas');
 const { withLogging } = require('./utils/logger');
 
@@ -136,8 +135,9 @@ async function enhanceReleaseNotesHandler(req, res) {
       sanitizedLength: sanitizedMarkdown.length
     });
 
-    // Initialize OpenAI with server-side key
-    const openai = new OpenAI.OpenAI({
+    // Dynamically import OpenAI (ESM module)
+    const OpenAI = await import('openai');
+    const openai = new OpenAI.default({
       apiKey: process.env.OPENAI_API_KEY,
     });
 

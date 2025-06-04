@@ -1,5 +1,4 @@
 const { createClient } = require('@supabase/supabase-js');
-const { Octokit } = require('@octokit/rest');
 const { validateGitHubEndpoint } = require('./validation/schemas');
 const { withLogging } = require('./utils/logger');
 
@@ -150,6 +149,8 @@ async function githubProxyHandler(req, res) {
       logger.error('Failed to get provider token', tokenError, { userId: user.id });
       throw tokenError;
     }
+    // Dynamically import Octokit (ESM module)
+    const { Octokit } = await import('@octokit/rest');
     const octokit = new Octokit({ auth: providerToken });
 
     // Handle different GitHub API endpoints
