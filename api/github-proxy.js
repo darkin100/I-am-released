@@ -40,85 +40,48 @@ async function checkRateLimit(userId, limit = 60, logger = null) {
 
 async function getProviderToken(userId, sessionToken, logger = null) {
   try {
-    // First, try to get the current session to check token validity
-    const { data: { user }, error: userError } = await supabase.auth.getUser(sessionToken);
-    
-    if (userError || !user) {
-      if (logger) logger.error('Failed to get user from session token', userError);
-      throw new Error('Invalid session');
-    }
+    // Create a Supabase client with the user's session token
+    const userSupabase = createClient(
+      process.env.SUPABASE_URL || '',
+      process.env.SUPABASE_ANON_KEY || '', // Use anon key for user operations
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`
+          }
+        }
+      }
+    );
 
-    // Try to get session with provider token from the session token
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    // Get the session using the user's token
+    const { data: sessionData, error: sessionError } = await userSupabase.auth.getSession();
     
-    if (!sessionError && sessionData?.session?.provider_token) {
-      if (logger) logger.info('Provider token retrieved from session');
+    if (sessionError) {
+      if (logger) logger.error('Failed to get session with user token', sessionError);
+    } else if (sessionData?.session?.provider_token) {
+      if (logger) logger.info('Provider token retrieved from user session');
       return sessionData.session.provider_token;
+    } else {
+      if (logger) logger.warn('No provider token in user session', {
+        hasSession: !!sessionData?.session,
+        sessionKeys: sessionData?.session ? Object.keys(sessionData.session) : []
+      });
     }
 
     // Try to refresh the session to get fresh tokens
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    const { data: refreshData, error: refreshError } = await userSupabase.auth.refreshSession();
     
     if (!refreshError && refreshData?.session?.provider_token) {
       if (logger) logger.info('Provider token retrieved from refreshed session');
       return refreshData.session.provider_token;
+    } else if (refreshError) {
+      if (logger) logger.error('Failed to refresh session', refreshError);
     }
 
-    // Fallback: fetch from database using service role key
-    if (logger) logger.warn('Attempting to fetch provider token from database');
+    // If we get here, the user needs to re-authenticate with GitHub
+    if (logger) logger.error('No provider token available - user needs to re-authenticate');
+    throw new Error('GitHub token not found - please sign out and sign in again');
     
-    // Create admin client with service role key
-    const adminSupabase = createClient(
-      process.env.SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_KEY || ''
-    );
-    
-    // Try both possible table names for user data
-    let data, error;
-    
-    // First try auth.users (Supabase auth schema)
-    const authResult = await adminSupabase
-      .from('auth.users')
-      .select('raw_app_meta_data')
-      .eq('id', userId)
-      .single();
-    
-    if (!authResult.error && authResult.data) {
-      data = authResult.data;
-      error = null;
-      if (logger) logger.info('Found user data in auth.users table');
-    } else {
-      // Fallback to users table (custom schema)
-      const usersResult = await adminSupabase
-        .from('users')
-        .select('raw_app_meta_data')
-        .eq('id', userId)
-        .single();
-      
-      data = usersResult.data;
-      error = usersResult.error;
-      if (!error && data) {
-        if (logger) logger.info('Found user data in users table');
-      } else {
-        if (logger) logger.error('Failed to find user in both auth.users and users tables', { 
-          authError: authResult.error?.message,
-          usersError: usersResult.error?.message
-        });
-      }
-    }
-
-    if (error) {
-      if (logger) logger.error('Database query error', error);
-      throw new Error('Failed to query user data');
-    }
-
-    if (!data?.raw_app_meta_data?.provider_token) {
-      if (logger) logger.error('No provider token in user data', { hasData: !!data, hasMetaData: !!data?.raw_app_meta_data });
-      throw new Error('GitHub token not found in user data');
-    }
-
-    if (logger) logger.info('Provider token retrieved from database');
-    return data.raw_app_meta_data.provider_token;
   } catch (error) {
     if (logger) logger.error('Error getting provider token', error);
     throw new Error('GitHub token not found');
@@ -148,12 +111,14 @@ async function githubProxyHandler(req, res) {
 
   try {
     // Check for required environment variables
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY || !process.env.SUPABASE_ANON_KEY) {
       logger.error('Missing Supabase environment variables', null, {
         hasSupabaseUrl: !!process.env.SUPABASE_URL,
         hasSupabaseKey: !!process.env.SUPABASE_SERVICE_KEY,
+        hasSupabaseAnonKey: !!process.env.SUPABASE_ANON_KEY,
         supabaseUrlLength: process.env.SUPABASE_URL?.length || 0,
-        supabaseKeyLength: process.env.SUPABASE_SERVICE_KEY?.length || 0
+        supabaseKeyLength: process.env.SUPABASE_SERVICE_KEY?.length || 0,
+        supabaseAnonKeyLength: process.env.SUPABASE_ANON_KEY?.length || 0
       });
       return res.status(500).json({ 
         error: 'Server configuration error. Please check environment variables.',
@@ -164,8 +129,10 @@ async function githubProxyHandler(req, res) {
     logger.debug('Environment variables check passed', {
       hasSupabaseUrl: !!process.env.SUPABASE_URL,
       hasSupabaseKey: !!process.env.SUPABASE_SERVICE_KEY,
+      hasSupabaseAnonKey: !!process.env.SUPABASE_ANON_KEY,
       supabaseUrlLength: process.env.SUPABASE_URL?.length || 0,
-      supabaseKeyLength: process.env.SUPABASE_SERVICE_KEY?.length || 0
+      supabaseKeyLength: process.env.SUPABASE_SERVICE_KEY?.length || 0,
+      supabaseAnonKeyLength: process.env.SUPABASE_ANON_KEY?.length || 0
     });
 
     // Verify authentication
